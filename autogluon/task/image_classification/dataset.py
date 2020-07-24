@@ -99,7 +99,7 @@ def generate_transform(train, resize, _is_osx, input_size, jitter_param):
 
 
 @func()
-def get_dataset(path=None, train=True, name=None,
+def get_dataset(df, train=True, name=None,
                 input_size=224, crop_ratio=0.875, jitter_param=0.4, scale_ratio_choice=[],
                 *args, **kwargs):
     """ Method to produce image classification dataset for AutoGluon, can either be a
@@ -132,56 +132,7 @@ def get_dataset(path=None, train=True, name=None,
 
     resize = int(math.ceil(input_size / crop_ratio))
     transform = generate_transform(train, resize, _is_osx, input_size, jitter_param)
-
-    if isinstance(name, str) and name.lower() in built_in_datasets:
-        return get_built_in_dataset(name, train=train, input_size=input_size, *args, **kwargs)
-
-    if '.rec' in path:
-        dataset = RecordDataset(
-            path,
-            *args,
-            transform=_TransformFirstClosure(transform),
-            **kwargs
-        )
-    elif _is_osx:
-        dataset = ImageFolderDataset(path, transform=transform, *args, **kwargs)
-    elif not train:
-        if not scale_ratio_choice:
-            dataset = TestImageFolderDataset(
-                path,
-                *args,
-                transform=_TransformFirstClosure(transform),
-                **kwargs
-            )
-        else:
-            dataset = []
-            for i in scale_ratio_choice:
-                resize = int(math.ceil(input_size / i))
-                dataset_item = TestImageFolderDataset(
-                    path,
-                    *args,
-                    transform=_TransformFirstClosure(
-                        generate_transform(train, resize, _is_osx, input_size, jitter_param)
-                    ),
-                    **kwargs
-                )
-                dataset.append(dataset_item.init())
-
-    elif 'label_file' in kwargs:
-        dataset = IndexImageDataset(
-            path,
-            transform=_TransformFirstClosure(transform),
-            *args,
-            **kwargs
-        )
-    else:
-        dataset = NativeImageFolderDataset(
-            path,
-            *args,
-            transform=_TransformFirstClosure(transform),
-            **kwargs
-        )
-
+    dataset = IndexImageDataset(df,in_col,target_col,transform=_TransformFirstClosure(transform),*args,**kwargs)
     if not scale_ratio_choice:
         dataset = dataset.init()
     return dataset
@@ -207,39 +158,35 @@ class IndexImageDataset(MXImageFolderDataset):
         A user defined callback that transforms each sample.
     """
 
-    def __init__(self, root, label_file, gray_scale=False, transform=None,
+    def __init__(self, df,in_col,target_col, gray_scale=False, transform=None,
                  extension='.jpg'):
-        self._root = os.path.expanduser(root)
-        self.items, self.synsets = self.read_csv(label_file, root, extension)
+        self.items, self.synsets = self.read_csv(df, in_col,target_col, extension)
         self._flag = 0 if gray_scale else 1
         self._transform = transform
 
     @staticmethod
-    def read_csv(filename, root, extension):
+    def read_csv(df, in_col,target_col,extension):
         """The CSV should have two collums
         1. image name (e.g. xxxx or xxxx.jpg)
         2. label name or index (e.g. aaa or 1)
         """
 
-        def label_to_index(label_list, name):
-            return label_list.index(name)
+        # def label_to_index(label_list, name):
+        #     return label_list.index(name)
+        #
+        # import csv
+        # label_dict = {}
+        # with open(filename) as f:
+        #     reader = csv.reader(f)
+        #     for row in reader:
+        #         assert len(row) == 2
+        #         label_dict[row[0]] = row[1]
+        #
+        # if 'id' in label_dict:
+        #     label_dict.pop('id')
 
-        import csv
-        label_dict = {}
-        with open(filename) as f:
-            reader = csv.reader(f)
-            for row in reader:
-                assert len(row) == 2
-                label_dict[row[0]] = row[1]
-
-        if 'id' in label_dict:
-            label_dict.pop('id')
-
-        labels = list(set(label_dict.values()))
-        samples = [
-            (os.path.join(root, f"{k}{extension}"), label_to_index(labels, v))
-            for k, v in label_dict.items()
-        ]
+        labels = df[in_col].tolist()
+        samples = df[target_col].tolist()
         return samples, labels
 
     @property

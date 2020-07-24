@@ -26,7 +26,7 @@ class ImageClassification(BaseTask):
     Classifier = Classifier
 
     @staticmethod
-    def Dataset(path=None, name=None, train=True, input_size=224, crop_ratio=0.875, *args, **kwargs):
+    def Dataset(df ,in_col,target_col, train=True, input_size=224, crop_ratio=0.875, *args, **kwargs):
         """Dataset for AutoGluon image classification tasks.
            May either be a :class:`autogluon.task.image_classification.ImageFolderDataset`, :class:`autogluon.task.image_classification.RecordDataset`,
            or a popular dataset already built into AutoGluon ('mnist', 'fashionmnist', 'cifar10', 'cifar100', 'imagenet').
@@ -56,7 +56,7 @@ class ImageClassification(BaseTask):
             if path is None:
                 raise ValueError("Either `path` or `name` must be present in Dataset(). "
                                  "If `name` is provided, it will override the rest of the arguments.")
-        return get_dataset(path=path, train=train, name=name,
+        return get_dataset(df ,in_col,target_col, train=train, name=name,
                            input_size=input_size, crop_ratio=crop_ratio,
                            *args, **kwargs)
 
